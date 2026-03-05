@@ -12,11 +12,11 @@ RUN apt-get update && apt-get install -y \
 COPY pyproject.toml .
 COPY src/ src/
 
-# Install Python dependencies
+# Install Python dependencies (includes playwright)
 RUN pip install --no-cache-dir ".[dev]"
 
 # Install Playwright browsers (chromium only to save space)
-RUN pip install playwright && playwright install chromium --with-deps
+RUN playwright install chromium --with-deps
 
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
