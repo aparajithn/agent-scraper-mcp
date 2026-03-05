@@ -1,0 +1,1 @@
+"""Agent Scraper MCP Server."""
