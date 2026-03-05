@@ -38,7 +38,7 @@ mcp = FastMCP(
 )
 
 @mcp.tool()
-def tool_scrape_url(url: str, format: str = "markdown") -> str:
+async def tool_scrape_url(url: str, format: str = "markdown") -> str:
     """
     Fetch a URL and extract clean text/markdown content (like readability).
     
@@ -49,10 +49,11 @@ def tool_scrape_url(url: str, format: str = "markdown") -> str:
     Returns:
         Extracted content with title and metadata
     """
-    return json.dumps(scrape_url(url, format))
+    result = await scrape_url(url, format)
+    return json.dumps(result)
 
 @mcp.tool()
-def tool_scrape_structured(url: str, selectors: Dict[str, str]) -> str:
+async def tool_scrape_structured(url: str, selectors: Dict[str, str]) -> str:
     """
     Extract structured data from a URL using CSS selectors.
     
@@ -63,10 +64,11 @@ def tool_scrape_structured(url: str, selectors: Dict[str, str]) -> str:
     Returns:
         JSON object with extracted data for each selector
     """
-    return json.dumps(scrape_structured(url, selectors))
+    result = await scrape_structured(url, selectors)
+    return json.dumps(result)
 
 @mcp.tool()
-def tool_screenshot_url(
+async def tool_screenshot_url(
     url: str,
     width: int = 1280,
     height: int = 720,
@@ -84,10 +86,11 @@ def tool_screenshot_url(
     Returns:
         Base64-encoded PNG image
     """
-    return json.dumps(screenshot_url(url, width, height, full_page))
+    result = await screenshot_url(url, width, height, full_page)
+    return json.dumps(result)
 
 @mcp.tool()
-def tool_extract_links(url: str, filter: str = None) -> str:
+async def tool_extract_links(url: str, filter: str = None) -> str:
     """
     Extract all links from a URL with their text.
     
@@ -98,10 +101,11 @@ def tool_extract_links(url: str, filter: str = None) -> str:
     Returns:
         Array of {text, href} objects
     """
-    return json.dumps(extract_links(url, filter))
+    result = await extract_links(url, filter)
+    return json.dumps(result)
 
 @mcp.tool()
-def tool_extract_meta(url: str) -> str:
+async def tool_extract_meta(url: str) -> str:
     """
     Extract metadata from a URL (title, description, OG tags, favicon, etc).
     
@@ -111,10 +115,11 @@ def tool_extract_meta(url: str) -> str:
     Returns:
         Metadata object with title, description, Open Graph tags, etc
     """
-    return json.dumps(extract_meta(url))
+    result = await extract_meta(url)
+    return json.dumps(result)
 
 @mcp.tool()
-def tool_search_google(query: str, num_results: int = 10) -> str:
+async def tool_search_google(query: str, num_results: int = 10) -> str:
     """
     Search Google and return results.
     
@@ -125,7 +130,8 @@ def tool_search_google(query: str, num_results: int = 10) -> str:
     Returns:
         Array of {title, url, snippet} objects
     """
-    return json.dumps(search_google(query, num_results))
+    result = await search_google(query, num_results)
+    return json.dumps(result)
 
 
 # ---------------------------------------------------------------------------
@@ -218,27 +224,27 @@ class SearchGoogleIn(BaseModel):
 
 @rest_app.post("/api/v1/scrape_url", dependencies=[Depends(lambda r: check_access(r, False))])
 async def r_scrape_url(req: ScrapeUrlIn):
-    return scrape_url(req.url, req.format)
+    return await scrape_url(req.url, req.format)
 
 @rest_app.post("/api/v1/scrape_structured", dependencies=[Depends(lambda r: check_access(r, False))])
 async def r_scrape_structured(req: ScrapeStructuredIn):
-    return scrape_structured(req.url, req.selectors)
+    return await scrape_structured(req.url, req.selectors)
 
 @rest_app.post("/api/v1/screenshot_url", dependencies=[Depends(lambda r: check_access(r, True))])
 async def r_screenshot_url(req: ScreenshotIn):
-    return screenshot_url(req.url, req.width, req.height, req.full_page)
+    return await screenshot_url(req.url, req.width, req.height, req.full_page)
 
 @rest_app.post("/api/v1/extract_links", dependencies=[Depends(lambda r: check_access(r, False))])
 async def r_extract_links(req: ExtractLinksIn):
-    return extract_links(req.url, req.filter)
+    return await extract_links(req.url, req.filter)
 
 @rest_app.post("/api/v1/extract_meta", dependencies=[Depends(lambda r: check_access(r, False))])
 async def r_extract_meta(req: ExtractMetaIn):
-    return extract_meta(req.url)
+    return await extract_meta(req.url)
 
 @rest_app.post("/api/v1/search_google", dependencies=[Depends(lambda r: check_access(r, False))])
 async def r_search_google(req: SearchGoogleIn):
-    return search_google(req.query, req.num_results)
+    return await search_google(req.query, req.num_results)
 
 
 # ---------------------------------------------------------------------------

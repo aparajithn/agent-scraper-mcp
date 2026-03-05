@@ -1,0 +1,19 @@
+{
+  "type": "web_service",
+  "name": "agent-scraper-mcp",
+  "ownerId": "tea-d3lvn8emcj7s73aa1ds0",
+  "repo": "https://github.com/aparajithn/agent-scraper-mcp",
+  "branch": "master",
+  "autoDeploy": "yes",
+  "serviceDetails": {
+    "env": "docker",
+    "envSpecificDetails": {
+      "dockerfilePath": "./Dockerfile",
+      "dockerContext": "."
+    },
+    "plan": "free",
+    "region": "ohio",
+    "runtime": "docker",
+    "numInstances": 1
+  }
+}

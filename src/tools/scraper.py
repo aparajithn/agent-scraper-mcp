@@ -48,7 +48,7 @@ async def fetch_html(url: str, timeout: int = 30) -> str:
         return response.text
 
 
-def scrape_url(url: str, format: str = "markdown") -> Dict[str, Any]:
+async def scrape_url(url: str, format: str = "markdown") -> Dict[str, Any]:
     """
     Fetch a URL and extract clean text/markdown content (like readability).
     
@@ -60,8 +60,8 @@ def scrape_url(url: str, format: str = "markdown") -> Dict[str, Any]:
         Dict with title, content, url
     """
     try:
-        # Run async fetch in sync context
-        html = asyncio.run(fetch_html(url))
+        # Fetch HTML
+        html = await fetch_html(url)
         
         # Use readability to extract main content
         doc = Document(html)
@@ -120,7 +120,7 @@ def _html_to_markdown(soup: BeautifulSoup) -> str:
     return "\n".join(lines)
 
 
-def scrape_structured(url: str, selectors: Dict[str, str]) -> Dict[str, Any]:
+async def scrape_structured(url: str, selectors: Dict[str, str]) -> Dict[str, Any]:
     """
     Extract structured data from a URL using CSS selectors.
     
@@ -132,7 +132,7 @@ def scrape_structured(url: str, selectors: Dict[str, str]) -> Dict[str, Any]:
         Dict with extracted data for each selector
     """
     try:
-        html = asyncio.run(fetch_html(url))
+        html = await fetch_html(url)
         soup = BeautifulSoup(html, 'lxml')
         
         data = {}
@@ -163,7 +163,7 @@ def scrape_structured(url: str, selectors: Dict[str, str]) -> Dict[str, Any]:
         }
 
 
-def screenshot_url(
+async def screenshot_url(
     url: str,
     width: int = 1280,
     height: int = 720,
@@ -182,23 +182,20 @@ def screenshot_url(
         Dict with base64 PNG image
     """
     try:
-        async def capture():
-            browser = await get_browser()
-            page = await browser.new_page(
-                viewport={"width": width, "height": height}
-            )
-            
-            try:
-                await page.goto(url, wait_until="networkidle", timeout=30000)
-                screenshot_bytes = await page.screenshot(
-                    full_page=full_page,
-                    type="png"
-                )
-                return base64.b64encode(screenshot_bytes).decode('utf-8')
-            finally:
-                await page.close()
+        browser = await get_browser()
+        page = await browser.new_page(
+            viewport={"width": width, "height": height}
+        )
         
-        screenshot_b64 = asyncio.run(capture())
+        try:
+            await page.goto(url, wait_until="networkidle", timeout=30000)
+            screenshot_bytes = await page.screenshot(
+                full_page=full_page,
+                type="png"
+            )
+            screenshot_b64 = base64.b64encode(screenshot_bytes).decode('utf-8')
+        finally:
+            await page.close()
         
         return {
             "success": True,
@@ -217,7 +214,7 @@ def screenshot_url(
         }
 
 
-def extract_links(url: str, filter: str = None) -> Dict[str, Any]:
+async def extract_links(url: str, filter: str = None) -> Dict[str, Any]:
     """
     Extract all links from a URL with their text.
     
@@ -229,7 +226,7 @@ def extract_links(url: str, filter: str = None) -> Dict[str, Any]:
         Array of {text, href}
     """
     try:
-        html = asyncio.run(fetch_html(url))
+        html = await fetch_html(url)
         soup = BeautifulSoup(html, 'lxml')
         
         links = []
@@ -262,7 +259,7 @@ def extract_links(url: str, filter: str = None) -> Dict[str, Any]:
         }
 
 
-def extract_meta(url: str) -> Dict[str, Any]:
+async def extract_meta(url: str) -> Dict[str, Any]:
     """
     Extract metadata from a URL (title, description, OG tags, favicon, etc).
     
@@ -273,7 +270,7 @@ def extract_meta(url: str) -> Dict[str, Any]:
         Metadata object
     """
     try:
-        html = asyncio.run(fetch_html(url))
+        html = await fetch_html(url)
         soup = BeautifulSoup(html, 'lxml')
         
         # Extract title
@@ -336,7 +333,7 @@ def extract_meta(url: str) -> Dict[str, Any]:
         }
 
 
-def search_google(query: str, num_results: int = 10) -> Dict[str, Any]:
+async def search_google(query: str, num_results: int = 10) -> Dict[str, Any]:
     """
     Search Google and return results.
     
@@ -354,7 +351,7 @@ def search_google(query: str, num_results: int = 10) -> Dict[str, Any]:
         for url in search(query, num=num_results, stop=num_results, pause=2):
             # Fetch title and snippet from the page
             try:
-                html = asyncio.run(fetch_html(url))
+                html = await fetch_html(url)
                 soup = BeautifulSoup(html, 'lxml')
                 
                 title = soup.title.string if soup.title else url
