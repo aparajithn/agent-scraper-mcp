@@ -186,13 +186,84 @@ async def mcp_server_card():
     return {
         "serverInfo": {"name": "agent-scraper", "version": "0.1.0"},
         "tools": [
-            {"name": "scrape_url"},
-            {"name": "scrape_structured"},
-            {"name": "screenshot_url"},
-            {"name": "extract_links"},
-            {"name": "extract_meta"},
-            {"name": "search_google"},
-        ],
+            {
+                "name": "scrape_url",
+                "description": "Fetch a URL and extract clean text/markdown content (like readability).",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "URL to scrape"},
+                        "format": {"type": "string", "description": "Output format", "enum": ["text", "markdown", "html"], "default": "markdown"}
+                    },
+                    "required": ["url"]
+                }
+            },
+            {
+                "name": "scrape_structured",
+                "description": "Extract structured data from a URL using CSS selectors.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "URL to scrape"},
+                        "selectors": {
+                            "type": "object",
+                            "description": "Dict of name → CSS selector (e.g. {\"title\": \"h1.title\", \"price\": \".price\"})",
+                            "additionalProperties": {"type": "string"}
+                        }
+                    },
+                    "required": ["url", "selectors"]
+                }
+            },
+            {
+                "name": "screenshot_url",
+                "description": "Take a screenshot of a URL.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "URL to screenshot"},
+                        "width": {"type": "integer", "description": "Viewport width", "default": 1280},
+                        "height": {"type": "integer", "description": "Viewport height", "default": 720},
+                        "full_page": {"type": "boolean", "description": "Capture full scrollable page", "default": False}
+                    },
+                    "required": ["url"]
+                }
+            },
+            {
+                "name": "extract_links",
+                "description": "Extract all links from a URL with their text.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "URL to scrape"},
+                        "filter": {"type": "string", "description": "Optional regex pattern to filter URLs"}
+                    },
+                    "required": ["url"]
+                }
+            },
+            {
+                "name": "extract_meta",
+                "description": "Extract metadata from a URL (title, description, OG tags, favicon, etc).",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "URL to scrape"}
+                    },
+                    "required": ["url"]
+                }
+            },
+            {
+                "name": "search_google",
+                "description": "Search Google and return results.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query"},
+                        "num_results": {"type": "integer", "description": "Number of results to return", "default": 10}
+                    },
+                    "required": ["query"]
+                }
+            }
+        ]
     }
 
 # --- REST endpoints ---

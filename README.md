@@ -3,6 +3,8 @@
 **The #1 most requested utility for AI agents** — professional web scraping, screenshots, and content extraction via MCP + REST API.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Smithery](https://smithery.ai/badge/@aparajithn/agent-scraper-mcp)](https://smithery.ai/server/@aparajithn/agent-scraper-mcp)
+[![Glama](https://glama.ai/badge/mcp/agent-scraper-mcp)](https://glama.ai/mcp/servers/agent-scraper-mcp)
 
 ## Features
 
