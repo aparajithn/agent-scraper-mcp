@@ -6,6 +6,10 @@
 [![Smithery](https://smithery.ai/badge/@aparajithn/agent-scraper-mcp)](https://smithery.ai/server/@aparajithn/agent-scraper-mcp)
 [![Glama](https://glama.ai/badge/mcp/agent-scraper-mcp)](https://glama.ai/mcp/servers/agent-scraper-mcp)
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/aparajithn-agent-scraper-mcp).
+
 ## Features
 
 🌐 **Clean Content Extraction** — Extract readable text/markdown from any webpage (like Readability)  
