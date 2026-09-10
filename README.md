@@ -172,6 +172,21 @@ wallet above, with an unused nonce. Payments are verified cryptographically
 (signature recovery + amount/recipient/deadline/replay checks) before the
 request is served — applies to both the REST API and MCP `tools/call`.
 
+### Collecting revenue (server operator)
+
+With `X402_SETTLER_PRIVATE_KEY` set, every verified payment is executed
+on-chain within seconds: the EIP-3009 `transferWithAuthorization` is submitted
+to the USDC contract on Base and the USDC moves from the payer to
+`X402_WALLET_ADDRESS`. The settler key does **not** need to be the receiving
+wallet's key — any address may execute the authorization, so a dedicated
+gas-only burner key can submit the transactions while funds land in the main
+wallet. It only needs a small ETH balance on Base for gas. Additional env vars:
+`X402_RPC_URL` (default `https://mainnet.base.org`) and
+`X402_SETTLE_MIN_MICROUSD` (default `0` — settle each payment immediately;
+raise it to batch small payments). Failed settlements are retried with
+backoff and, if all retries fail, the full authorization is written to the
+logs (CRITICAL) for manual redemption — no payment is silently lost.
+
 ## Tools Reference
 
 ### 1. `scrape_url`

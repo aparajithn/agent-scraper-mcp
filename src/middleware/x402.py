@@ -25,6 +25,8 @@ from eth_keys import keys
 from eth_utils import keccak, to_checksum_address
 from fastapi.responses import JSONResponse
 
+from .settle import SettlementService
+
 # USDC on Base mainnet
 USDC_BASE_MAINNET = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 
@@ -152,6 +154,7 @@ class X402Middleware:
         description: str = "Payment for API access",
         asset_name: str = "USD Coin",
         asset_version: str = "2",
+        settlement: Optional[SettlementService] = None,
     ):
         """
         Args:
@@ -172,6 +175,7 @@ class X402Middleware:
         self.description = description
         self.asset_name = asset_name
         self.asset_version = asset_version
+        self.settlement = settlement
         self.enabled = wallet_address is not None
         # nonce -> expiry (epoch seconds) for replay protection
         self._seen_nonces: Dict[str, float] = {}
@@ -267,6 +271,9 @@ class X402Middleware:
 
         # Valid: remember the nonce so it cannot be replayed
         self._seen_nonces[nonce.lower()] = _epoch_ms(valid_before_raw)
+        # Settle on-chain (moves the USDC to our wallet) when a settler key is configured
+        if self.settlement is not None and self.settlement.enabled:
+            self.settlement.enqueue(authorization, signature, value)
         return True, None
 
     def _purge_nonces(self, now: float) -> None:
@@ -319,6 +326,14 @@ def get_x402_middleware() -> X402Middleware:
     """Build the x402 middleware from environment configuration."""
     scrape_price = int(os.getenv("X402_SCRAPE_PRICE_MICROUSD", "5000"))
     screenshot_price = int(os.getenv("X402_SCREENSHOT_PRICE_MICROUSD", "10000"))
+    settlement = SettlementService(
+        private_key=os.getenv("X402_SETTLER_PRIVATE_KEY") or None,
+        wallet_address=os.getenv("X402_WALLET_ADDRESS") or None,
+        usdc_contract=os.getenv("X402_USDC_CONTRACT", USDC_BASE_MAINNET),
+        rpc_url=os.getenv("X402_RPC_URL", "https://mainnet.base.org"),
+        chain_id=int(os.getenv("X402_CHAIN_ID", "8453")),
+        settle_min_units=int(os.getenv("X402_SETTLE_MIN_MICROUSD", "0")),
+    )
     return X402Middleware(
         wallet_address=os.getenv("X402_WALLET_ADDRESS") or None,
         network=os.getenv("X402_NETWORK", "base"),
@@ -331,6 +346,7 @@ def get_x402_middleware() -> X402Middleware:
         },
         max_timeout_seconds=int(os.getenv("X402_MAX_TIMEOUT_SECONDS", "60")),
         description="Payment for Agent Scraper MCP tool access",
+        settlement=settlement,
     )
 
 
