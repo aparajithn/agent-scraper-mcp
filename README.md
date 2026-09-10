@@ -147,14 +147,30 @@ curl -X POST https://agent-scraper-mcp.onrender.com/api/v1/search_google \
 - All tools included
 - No credit card required
 
-### Paid Tier (HTTP 402 Payment)
+### Paid Tier (HTTP 402 / x402 Payment)
 After free tier exhausted:
 - **Scraping tools**: $0.005/request (scrape_url, scrape_structured, extract_links, extract_meta, search_google)
 - **Screenshot tool**: $0.01/request (higher due to compute cost)
 
-Payment via HTTP 402 with crypto wallet:
-- Wallet address: `0x8E844a7De89d7CfBFe9B4453E65935A22F146aBB`
-- Include `X-Payment` header with payment proof
+Payment via the x402 protocol (HTTP 402) in USDC on Base:
+- Wallet address (`payTo`): `0x8E844a7De89d7CfBFe9B4453E65935A22F146aBB`
+
+When you exceed the free tier, the server responds with HTTP 402 carrying
+machine-readable payment requirements (x402 v1), so x402-aware clients pay and
+retry automatically:
+
+```python
+from x402_fetch import x402_fetch  # pip install x402-fetch
+response = x402_fetch("https://agent-scraper-mcp.onrender.com/api/v1/scrape_url", method="POST",
+                      body={"url": "https://example.com", "format": "markdown"})
+```
+
+To pay manually, attach an `X-Payment` header containing a base64-encoded
+JSON envelope with an EIP-3009 `TransferWithAuthorization` (USDC on Base)
+signed with the payer's EIP-712 key for the exact price, addressed to the
+wallet above, with an unused nonce. Payments are verified cryptographically
+(signature recovery + amount/recipient/deadline/replay checks) before the
+request is served — applies to both the REST API and MCP `tools/call`.
 
 ## Tools Reference
 

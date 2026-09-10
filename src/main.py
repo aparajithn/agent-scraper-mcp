@@ -20,7 +20,7 @@ from .tools import (
     extract_meta,
     search_google,
 )
-from .middleware import RateLimiter, get_x402_middleware
+from .middleware import RateLimiter, PaymentGateMiddleware, get_x402_middleware
 
 # ---------------------------------------------------------------------------
 # MCP Server (FastMCP — stateless Streamable HTTP)
@@ -136,7 +136,10 @@ async def tool_search_google(query: str, num_results: int = 10) -> str:
 # ---------------------------------------------------------------------------
 # REST-only FastAPI app — mounted UNDER the MCP Starlette app
 # ---------------------------------------------------------------------------
-rate_limiter = RateLimiter(free_limit=50, ttl_seconds=86400)
+rate_limiter = RateLimiter(
+    free_limit=int(os.getenv("RATE_LIMIT_FREE", "50")),
+    ttl_seconds=86400,
+)
 x402 = get_x402_middleware()
 
 rest_app = FastAPI(
@@ -147,13 +150,44 @@ rest_app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-async def check_access(request: Request, is_screenshot: bool = False):
-    """Check rate limit and payment for requests."""
-    allowed, remaining, reset_at = rate_limiter.check_limit(request)
-    if not allowed:
-        if x402.check_payment(request):
-            return
-        return x402.create_payment_required_response(is_screenshot=is_screenshot)
+
+class PaymentRequired(Exception):
+    """Raised when the free tier is exhausted and no valid payment was given."""
+
+    def __init__(self, response):
+        self.response = response
+
+
+@rest_app.exception_handler(PaymentRequired)
+async def payment_required_handler(request: Request, exc: PaymentRequired):
+    return exc.response
+
+
+async def check_access(request: Request, price: int):
+    """Free-tier rate limit + x402 paywall for REST endpoints.
+
+    Raises PaymentRequired (rendered as an x402 HTTP 402 response) when the
+    caller is over the free-tier limit and did not attach a valid payment.
+    """
+    allowed, _remaining, _reset_at = rate_limiter.check_limit(request)
+    if allowed:
+        return
+    ok, error = x402.verify_payment(request.headers, price)
+    if not ok:
+        resource = f"https://{PUBLIC_HOST}{request.url.path}"
+        raise PaymentRequired(
+            x402.payment_required_response(
+                resource, price, reason=error or "X-PAYMENT header is required"
+            )
+        )
+
+
+async def check_access_scrape(request: Request):
+    await check_access(request, x402.price_for())
+
+
+async def check_access_screenshot(request: Request):
+    await check_access(request, x402.price_for("screenshot_url"))
 
 # --- Health & discovery ---
 @rest_app.get("/health")
@@ -292,27 +326,27 @@ class SearchGoogleIn(BaseModel):
     query: str
     num_results: int = 10
 
-@rest_app.post("/api/v1/scrape_url", dependencies=[Depends(lambda r: check_access(r, False))])
+@rest_app.post("/api/v1/scrape_url", dependencies=[Depends(check_access_scrape)])
 async def r_scrape_url(req: ScrapeUrlIn):
     return await scrape_url(req.url, req.format)
 
-@rest_app.post("/api/v1/scrape_structured", dependencies=[Depends(lambda r: check_access(r, False))])
+@rest_app.post("/api/v1/scrape_structured", dependencies=[Depends(check_access_scrape)])
 async def r_scrape_structured(req: ScrapeStructuredIn):
     return await scrape_structured(req.url, req.selectors)
 
-@rest_app.post("/api/v1/screenshot_url", dependencies=[Depends(lambda r: check_access(r, True))])
+@rest_app.post("/api/v1/screenshot_url", dependencies=[Depends(check_access_screenshot)])
 async def r_screenshot_url(req: ScreenshotIn):
     return await screenshot_url(req.url, req.width, req.height, req.full_page)
 
-@rest_app.post("/api/v1/extract_links", dependencies=[Depends(lambda r: check_access(r, False))])
+@rest_app.post("/api/v1/extract_links", dependencies=[Depends(check_access_scrape)])
 async def r_extract_links(req: ExtractLinksIn):
     return await extract_links(req.url, req.filter)
 
-@rest_app.post("/api/v1/extract_meta", dependencies=[Depends(lambda r: check_access(r, False))])
+@rest_app.post("/api/v1/extract_meta", dependencies=[Depends(check_access_scrape)])
 async def r_extract_meta(req: ExtractMetaIn):
     return await extract_meta(req.url)
 
-@rest_app.post("/api/v1/search_google", dependencies=[Depends(lambda r: check_access(r, False))])
+@rest_app.post("/api/v1/search_google", dependencies=[Depends(check_access_scrape)])
 async def r_search_google(req: SearchGoogleIn):
     return await search_google(req.query, req.num_results)
 
@@ -323,5 +357,11 @@ async def r_search_google(req: SearchGoogleIn):
 from starlette.routing import Mount as StarletteMount
 mcp._custom_starlette_routes.append(StarletteMount("/", app=rest_app))
 
-# The final ASGI app
-app = mcp.streamable_http_app()
+# The final ASGI app, wrapped so MCP tools/call requests are also subject to
+# the free-tier rate limit and the x402 paywall.
+app = PaymentGateMiddleware(
+    mcp.streamable_http_app(),
+    rate_limiter=rate_limiter,
+    x402=x402,
+    public_host=PUBLIC_HOST,
+)
